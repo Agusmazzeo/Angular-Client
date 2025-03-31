@@ -51,7 +51,7 @@ export interface IReferences {
 }
 
 export interface IReportV2 {
-  ReferenceVariables: IReferences[];
+  ReferenceVariables: Record<string, IReferences>;
   VouchersByCategory: IVouchers;
   VouchersReturnByCategory: IVouchersReturn;
 }

@@ -34,7 +34,7 @@ import { forkJoin } from 'rxjs';
 
 import { LoaderService } from '../../services/loader.service';
 import { ReportsService } from '../../services/reports.service';
-import { A3500_ID, INFLATION_ID } from '../constants';
+import { A3500_NAME, INFLATION_NAME } from '../constants';
 import { EDateType } from '../enums';
 import { IReport, IVouchers } from './interfaces';
 import {
@@ -524,12 +524,8 @@ export class ReportsComponent implements OnInit {
 
     reportObservable.subscribe({
       next: (reports: IReportV2) => {
-        this.inflationData = reports.ReferenceVariables?.find(
-          (data: IReferences) => data.ID === INFLATION_ID
-        );
-        this.dolarData = reports.ReferenceVariables?.find(
-          (data: IReferences) => data.ID === A3500_ID
-        );
+        this.inflationData = reports.ReferenceVariables?.[INFLATION_NAME];
+        this.dolarData = reports.ReferenceVariables?.[A3500_NAME];
 
         const inflationValues = this.inflationData?.Valuations;
         const dolarValues = this.dolarData?.Valuations;
