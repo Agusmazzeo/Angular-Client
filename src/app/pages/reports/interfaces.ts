@@ -6,7 +6,7 @@ export interface IHolding {
   Date: string | null;
 }
 
-export interface IVoucher {
+export interface IAsset {
   ID: string;
   Type: string;
   Description?: string;
@@ -16,10 +16,10 @@ export interface IVoucher {
   Transactions: any[];
 }
 
-export interface IVouchers {
-  [key: string]: IVoucher[];
+export interface IAssets {
+  [key: string]: IAsset[];
 }
 
 export interface IReport {
-  VouchersByCategory: IVouchers;
+  AssetsByCategory: IAssets;
 }

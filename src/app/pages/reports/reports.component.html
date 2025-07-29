@@ -96,6 +96,7 @@
     >
       Buscar
     </button>
+
     <button
       *ngIf="dataSource?.length"
       class="search-button"
@@ -117,15 +118,24 @@
 
 <div class="table-container">
   <mat-tab-group>
-    <mat-tab label="TENENCIA">
+    <!-- TENENCIA POR ACTIVO -->
+    <mat-tab label="TENENCIA POR ACTIVO">
       <table mat-table [dataSource]="dataSource" id="printcontent">
         <ng-container matColumnDef="date">
           <th mat-header-cell *matHeaderCellDef>FECHA</th>
           <td mat-cell *matCellDef="let element">{{ element.date }}</td>
         </ng-container>
 
+        <ng-container
+          matColumnDef="message"
+          *ngIf="displayedColumns.includes('message')"
+        >
+          <th mat-header-cell *matHeaderCellDef>MENSAJE</th>
+          <td mat-cell *matCellDef="let element">{{ element.message }}</td>
+        </ng-container>
+
         <ng-container *ngFor="let column of displayedColumns.slice(1, -1)">
-          <ng-container [matColumnDef]="column">
+          <ng-container [matColumnDef]="column" *ngIf="column !== 'message'">
             <th mat-header-cell *matHeaderCellDef>{{ column }}</th>
             <td mat-cell *matCellDef="let element">
               {{
@@ -138,7 +148,10 @@
           </ng-container>
         </ng-container>
 
-        <ng-container matColumnDef="total">
+        <ng-container
+          matColumnDef="total"
+          *ngIf="!displayedColumns.includes('message')"
+        >
           <th mat-header-cell *matHeaderCellDef>TOTAL</th>
           <td mat-cell *matCellDef="let element">
             {{
@@ -153,15 +166,83 @@
         <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
       </table>
     </mat-tab>
-    <mat-tab label="RENDIMIENTO">
+
+    <!-- TENENCIA POR CATEGORÍA -->
+    <mat-tab label="TENENCIA POR CATEGORÍA">
+      <table
+        mat-table
+        [dataSource]="categoryDataSource"
+        id="printcontent-category"
+      >
+        <ng-container matColumnDef="date">
+          <th mat-header-cell *matHeaderCellDef>FECHA</th>
+          <td mat-cell *matCellDef="let element">{{ element.date }}</td>
+        </ng-container>
+
+        <ng-container
+          matColumnDef="message"
+          *ngIf="categoryDisplayedColumns.includes('message')"
+        >
+          <th mat-header-cell *matHeaderCellDef>MENSAJE</th>
+          <td mat-cell *matCellDef="let element">{{ element.message }}</td>
+        </ng-container>
+
+        <ng-container
+          *ngFor="let column of categoryDisplayedColumns.slice(1, -1)"
+        >
+          <ng-container [matColumnDef]="column" *ngIf="column !== 'message'">
+            <th mat-header-cell *matHeaderCellDef>{{ column }}</th>
+            <td mat-cell *matCellDef="let element">
+              {{
+                element[column] !== "-"
+                  ? (element[column]
+                    | currency : getCurrencySymbol(column) : "symbol")
+                  : "-"
+              }}
+            </td>
+          </ng-container>
+        </ng-container>
+
+        <ng-container
+          matColumnDef="total"
+          *ngIf="!categoryDisplayedColumns.includes('message')"
+        >
+          <th mat-header-cell *matHeaderCellDef>TOTAL</th>
+          <td mat-cell *matCellDef="let element">
+            {{
+              element.total !== "-"
+                ? (element.total | currency : "$" : "symbol")
+                : "-"
+            }}
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="categoryDisplayedColumns"></tr>
+        <tr
+          mat-row
+          *matRowDef="let row; columns: categoryDisplayedColumns"
+        ></tr>
+      </table>
+    </mat-tab>
+
+    <!-- RENDIMIENTO POR ACTIVO -->
+    <mat-tab label="RENDIMIENTO POR ACTIVO">
       <table mat-table [dataSource]="returnsDataSource">
         <ng-container matColumnDef="date">
           <th mat-header-cell *matHeaderCellDef>FECHA</th>
           <td mat-cell *matCellDef="let element">{{ element.date }}</td>
         </ng-container>
 
+        <ng-container
+          matColumnDef="message"
+          *ngIf="returnsColumns.includes('message')"
+        >
+          <th mat-header-cell *matHeaderCellDef>MENSAJE</th>
+          <td mat-cell *matCellDef="let element">{{ element.message }}</td>
+        </ng-container>
+
         <ng-container *ngFor="let column of returnsColumns.slice(1, -1)">
-          <ng-container [matColumnDef]="column">
+          <ng-container [matColumnDef]="column" *ngIf="column !== 'message'">
             <th mat-header-cell *matHeaderCellDef>{{ column }}</th>
             <td
               mat-cell
@@ -180,88 +261,10 @@
           </ng-container>
         </ng-container>
 
-        <ng-container matColumnDef="total">
-          <th mat-header-cell *matHeaderCellDef>TOTAL</th>
-          <td
-            mat-cell
-            *matCellDef="let element"
-            [ngClass]="{
-            'negative-value': element.total !== '-' && element.total < 0,
-            'positive-value': element.total !== '-' && element.total > 0,
-          }"
-          >
-            {{ "-" }}
-          </td>
-        </ng-container>
-
-        <tr mat-header-row *matHeaderRowDef="returnsColumns"></tr>
-        <tr mat-row *matRowDef="let row; columns: returnsColumns"></tr>
-      </table>
-    </mat-tab>
-    <mat-tab label="REFERENCIAS">
-      <table mat-table [dataSource]="referencesDataSource">
-        <ng-container matColumnDef="date">
-          <th mat-header-cell *matHeaderCellDef>FECHA</th>
-          <td mat-cell *matCellDef="let element">{{ element.date }}</td>
-        </ng-container>
-        <ng-container matColumnDef="value_dolar">
-          <th mat-header-cell *matHeaderCellDef>A3500</th>
-          <td mat-cell *matCellDef="let element">
-            {{ element.value_dolar | currency : "$" : "symbol" }}
-          </td>
-        </ng-container>
-        <ng-container matColumnDef="value_inflation">
-          <th mat-header-cell *matHeaderCellDef>INFLACION</th>
-          <td mat-cell *matCellDef="let element">
-            {{ element.value_inflation | percent : "1.2-2" }}
-          </td>
-        </ng-container>
-
-        <!-- <ng-container [matColumnDef]="column">
-            <th mat-header-cell *matHeaderCellDef>{{ column }}</th>
-            <td mat-cell *matCellDef="let element">
-              {{
-                element[column] !== "-"
-                  ? (element[column] | currency : "$" : "symbol")
-                  : "-"
-              }}
-            </td>
-          </ng-container> -->
-        <!-- </ng-container> -->
-
-        <tr mat-header-row *matHeaderRowDef="referencesColumns"></tr>
-        <tr mat-row *matRowDef="let row; columns: referencesColumns"></tr>
-      </table>
-    </mat-tab>
-    <!-- <mat-tab label="RENDIMIENTO POR ACTIVO">
-      <table mat-table [dataSource]="differenceDataSource">
-        <ng-container matColumnDef="date">
-          <th mat-header-cell *matHeaderCellDef>FECHA</th>
-          <td mat-cell *matCellDef="let element">{{ element.date }}</td>
-        </ng-container>
-
-        <ng-container *ngFor="let column of differenceColumns.slice(1, -1)">
-          <ng-container [matColumnDef]="column">
-            <th mat-header-cell *matHeaderCellDef>{{ column }}</th>
-            <td
-              mat-cell
-              *matCellDef="let element"
-              [ngClass]="{
-              'negative-value': element[column] !== '-' && element[column] < 0,
-              'positive-value': element[column] !== '-' && element[column] > 0,
-            }"
-            >
-              {{
-                element[column] !== "-"
-                  ? (element[column]
-                    | currency : getCurrencySymbol(column) : "symbol")
-                  : "-"
-              }}
-            </td>
-          </ng-container>
-        </ng-container>
-
-        <ng-container matColumnDef="total">
+        <ng-container
+          matColumnDef="total"
+          *ngIf="!returnsColumns.includes('message')"
+        >
           <th mat-header-cell *matHeaderCellDef>TOTAL</th>
           <td
             mat-cell
@@ -273,195 +276,112 @@
           >
             {{
               element.total !== "-"
-                ? (element.total | currency : "$" : "symbol")
+                ? (element.total / 100 | percent : "1.2-2")
                 : "-"
             }}
           </td>
         </ng-container>
 
-        <tr mat-header-row *matHeaderRowDef="differenceColumns"></tr>
-        <tr mat-row *matRowDef="let row; columns: differenceColumns"></tr>
+        <tr mat-header-row *matHeaderRowDef="returnsColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: returnsColumns"></tr>
       </table>
-    </mat-tab> -->
-    <!-- <mat-tab label="RENDIMIENTO SEMANAL">
-      <table mat-table [dataSource]="percentageWeeklyDataSource">
+    </mat-tab>
+
+    <!-- RENDIMIENTO POR CATEGORÍA -->
+    <mat-tab label="RENDIMIENTO POR CATEGORÍA">
+      <table mat-table [dataSource]="categoryReturnsDataSource">
         <ng-container matColumnDef="date">
           <th mat-header-cell *matHeaderCellDef>FECHA</th>
           <td mat-cell *matCellDef="let element">{{ element.date }}</td>
         </ng-container>
 
-        <ng-container matColumnDef="porcentual">
-          <th mat-header-cell *matHeaderCellDef>Porcentual</th>
+        <ng-container
+          matColumnDef="message"
+          *ngIf="categoryReturnsColumns.includes('message')"
+        >
+          <th mat-header-cell *matHeaderCellDef>MENSAJE</th>
+          <td mat-cell *matCellDef="let element">{{ element.message }}</td>
+        </ng-container>
+
+        <ng-container
+          *ngFor="let column of categoryReturnsColumns.slice(1, -1)"
+        >
+          <ng-container [matColumnDef]="column" *ngIf="column !== 'message'">
+            <th mat-header-cell *matHeaderCellDef>{{ column }}</th>
+            <td
+              mat-cell
+              *matCellDef="let element"
+              [ngClass]="{
+              'negative-value': element[column] !== '-' && element[column] < 0,
+              'positive-value': element[column] !== '-' && element[column] > 0,
+            }"
+            >
+              {{
+                element[column] !== "-"
+                  ? (element[column] / 100 | percent : "1.2-2")
+                  : "-"
+              }}
+            </td>
+          </ng-container>
+        </ng-container>
+
+        <ng-container
+          matColumnDef="total"
+          *ngIf="!categoryReturnsColumns.includes('message')"
+        >
+          <th mat-header-cell *matHeaderCellDef>TOTAL</th>
           <td
             mat-cell
             *matCellDef="let element"
             [ngClass]="{
-            'negative-value': element.porcentual !== '-' && element.porcentual < 0,
-            'positive-value': element.porcentual !== '-' && element.porcentual > 0,
+            'negative-value': element.total !== '-' && element.total < 0,
+            'positive-value': element.total !== '-' && element.total > 0,
           }"
           >
             {{
-              element.porcentual !== "-"
-                ? (element.porcentual | percent : "1.2-2")
+              element.total !== "-"
+                ? (element.total / 100 | percent : "1.2-2")
                 : "-"
             }}
           </td>
         </ng-container>
 
-        <ng-container matColumnDef="ARS">
-          <th mat-header-cell *matHeaderCellDef>ARS</th>
-          <td
-            mat-cell
-            *matCellDef="let element"
-            [ngClass]="{
-            'negative-value': element.ARS !== '-' && element.ARS < 0,
-            'positive-value': element.ARS !== '-' && element.ARS > 0,
-          }"
-          >
-            {{
-              element.ARS !== "-"
-                ? (element.ARS | currency : "$" : "symbol")
-                : "-"
-            }}
-          </td>
-        </ng-container>
-
-        <ng-container matColumnDef="A3500">
-          <th mat-header-cell *matHeaderCellDef>A3500</th>
-          <td
-            mat-cell
-            *matCellDef="let element"
-            [ngClass]="{
-            'negative-value': element.A3500 !== '-' && element.A3500 < 0,
-            'positive-value': element.A3500 !== '-' && element.A3500 > 0,
-          }"
-          >
-            {{
-              element.A3500 !== "-" ? (element.A3500 | percent : "1.2-2") : "-"
-            }}
-          </td>
-        </ng-container>
-
-        <ng-container matColumnDef="inflacion">
-          <th mat-header-cell *matHeaderCellDef>INFLACION</th>
-          <td
-            mat-cell
-            *matCellDef="let element"
-            [ngClass]="{
-            'negative-value': element.inflacion !== '-' && element.inflacion < 0,
-            'positive-value': element.inflacion !== '-' && element.inflacion > 0,
-          }"
-          >
-            {{
-              element.inflacion !== "-"
-                ? (element.inflacion | percent : "1.2-2")
-                : "-"
-            }}
-          </td>
-        </ng-container>
-
-        <tr mat-header-row *matHeaderRowDef="percentageWeeklyColumns"></tr>
-        <tr mat-row *matRowDef="let row; columns: percentageWeeklyColumns"></tr>
+        <tr mat-header-row *matHeaderRowDef="categoryReturnsColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: categoryReturnsColumns"></tr>
       </table>
-    </mat-tab> -->
-    <!-- <mat-tab label="RENDIMIENTO ACUMULADO">
-      <table mat-table [dataSource]="percentageAcumDataSource">
+    </mat-tab>
+
+    <!-- REFERENCIAS -->
+    <mat-tab label="REFERENCIAS">
+      <table mat-table [dataSource]="referencesDataSource">
         <ng-container matColumnDef="date">
           <th mat-header-cell *matHeaderCellDef>FECHA</th>
           <td mat-cell *matCellDef="let element">{{ element.date }}</td>
         </ng-container>
-
-        <ng-container matColumnDef="porcentual">
-          <th mat-header-cell *matHeaderCellDef>Porcentual</th>
-          <td
-            mat-cell
-            *matCellDef="let element"
-            [ngClass]="{
-            'negative-value': element.porcentual !== '-' && element.porcentual < 0,
-            'positive-value': element.porcentual !== '-' && element.porcentual > 0,
-          }"
-          >
-            {{
-              element.porcentual !== "-"
-                ? (element.porcentual | percent : "1.2-2")
-                : "-"
-            }}
-          </td>
-        </ng-container>
-
-        <ng-container matColumnDef="ARS">
-          <th mat-header-cell *matHeaderCellDef>ARS</th>
-          <td
-            mat-cell
-            *matCellDef="let element"
-            [ngClass]="{
-            'negative-value': element.ARS !== '-' && element.ARS < 0,
-            'positive-value': element.ARS !== '-' && element.ARS > 0,
-          }"
-          >
-            {{
-              element.ARS !== "-"
-                ? (element.ARS | currency : "$" : "symbol")
-                : "-"
-            }}
-          </td>
-        </ng-container>
-
-        <ng-container matColumnDef="A3500">
+        <ng-container matColumnDef="value_dolar">
           <th mat-header-cell *matHeaderCellDef>A3500</th>
-          <td
-            mat-cell
-            *matCellDef="let element"
-            [ngClass]="{
-            'negative-value': element.A3500 !== '-' && element.A3500 < 0,
-            'positive-value': element.A3500 !== '-' && element.A3500 > 0,
-          }"
-          >
+          <td mat-cell *matCellDef="let element">
             {{
-              element.A3500 !== "-" ? (element.A3500 | percent : "1.2-2") : "-"
+              element.value_dolar === "No disponible"
+                ? element.value_dolar
+                : (element.value_dolar | currency : "$" : "symbol")
             }}
           </td>
         </ng-container>
-
-        <ng-container matColumnDef="inflacion">
+        <ng-container matColumnDef="value_inflation">
           <th mat-header-cell *matHeaderCellDef>INFLACION</th>
-          <td
-            mat-cell
-            *matCellDef="let element"
-            [ngClass]="{
-            'negative-value': element.inflacion !== '-' && element.inflacion < 0,
-            'positive-value': element.inflacion !== '-' && element.inflacion > 0,
-          }"
-          >
+          <td mat-cell *matCellDef="let element">
             {{
-              element.inflacion !== "-"
-                ? (element.inflacion | percent : "1.2-2")
-                : "-"
+              element.value_inflation === "No disponible"
+                ? element.value_inflation
+                : (element.value_inflation | percent : "1.2-2")
             }}
           </td>
         </ng-container>
 
-        <tr mat-header-row *matHeaderRowDef="percentageAcumColumns"></tr>
-        <tr mat-row *matRowDef="let row; columns: percentageAcumColumns"></tr>
+        <tr mat-header-row *matHeaderRowDef="referencesColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: referencesColumns"></tr>
       </table>
-    </mat-tab> -->
-    <!-- <mat-tab label="TENENCIA">
-      <div class="chart-section">
-        <ngx-charts-line-chart
-          [results]="charData"
-          [animations]="animationPC"
-          [scheme]="colorSchemePC"
-          [view]="[1000, 400]"
-          [showXAxisLabel]="true"
-          [showYAxisLabel]="true"
-          [showRefLabels]="true"
-          [showRefLines]="true"
-          [showGridLines]="true"
-          [xAxis]="true"
-          [yAxis]="true"
-          [legend]="true"
-        ></ngx-charts-line-chart>
-      </div>
-    </mat-tab> -->
+    </mat-tab>
   </mat-tab-group>
 </div>

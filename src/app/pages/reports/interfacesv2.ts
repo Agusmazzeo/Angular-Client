@@ -6,7 +6,7 @@ export interface IHolding {
   Date: string | null;
 }
 
-export interface IVoucher {
+export interface IAsset {
   ID: string;
   Type: string;
   Description?: string;
@@ -16,7 +16,7 @@ export interface IVoucher {
   Transactions: any[];
 }
 
-export interface IVoucherReturn {
+export interface IAssetReturn {
   ID: string;
   Type: string;
   Description?: string;
@@ -31,12 +31,12 @@ export interface IReturn {
   ReturnPercentage: number;
 }
 
-export interface IVouchers {
-  [key: string]: IVoucher[];
+export interface IAssets {
+  [key: string]: IAsset[];
 }
 
-export interface IVouchersReturn {
-  [key: string]: IVoucherReturn[];
+export interface IAssetsReturn {
+  [key: string]: IAssetReturn[];
 }
 
 export interface IValuation {
@@ -52,6 +52,8 @@ export interface IReferences {
 
 export interface IReportV2 {
   ReferenceVariables: Record<string, IReferences>;
-  VouchersByCategory: IVouchers;
-  VouchersReturnByCategory: IVouchersReturn;
+  AssetsByCategory: IAssets;
+  AssetsReturnByCategory: IAssetsReturn;
+  TotalHoldingsByDate?: any[];
+  TotalReturns?: any[];
 }

@@ -14,7 +14,7 @@ export class ReportsService {
 
   private apiUrl = environment.apiUrl;
 
-  getAccountVouchersByDate(accountId: string, date: string): Observable<any> {
+  getAccountAssetsByDate(accountId: string, date: string): Observable<any> {
     const formattedDate = this.formatDate(date);
     const url = `${this.apiUrl}/accounts/${accountId}?date=${formattedDate}`;
     return this.http.get<any>(url);
@@ -26,7 +26,7 @@ export class ReportsService {
     return this.http.get<any>(url);
   }
 
-  getAccountVouchersByRange(
+  getAccountAssetsByRange(
     accountId: string,
     startDate: string,
     endDate: string,

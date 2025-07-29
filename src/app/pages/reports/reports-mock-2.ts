@@ -156,7 +156,7 @@ export const reportsMockV2: IReportV2 = {
       ],
     },
   ],
-  VouchersByCategory: {
+  AssetsByCategory: {
     ARS: [
       {
         ID: '$',
@@ -1065,7 +1065,7 @@ export const reportsMockV2: IReportV2 = {
       },
     ],
   },
-  VouchersReturnByCategory: {
+  AssetsReturnByCategory: {
     'BONOS HARD DOLLAR': [
       {
         ID: 'AL30',

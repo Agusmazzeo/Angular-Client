@@ -1,30 +1,36 @@
 import { CommonModule, CurrencyPipe } from '@angular/common';
 import { Component, inject, model, OnInit } from '@angular/core';
 import {
-  FormBuilder,
-  FormControl,
-  FormGroup,
-  FormsModule,
-  ReactiveFormsModule,
+    FormBuilder,
+    FormControl,
+    FormGroup,
+    FormsModule,
+    ReactiveFormsModule
 } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { provideNativeDateAdapter } from '@angular/material/core';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import {
-  MatFormFieldModule,
-  MatHint,
-  MatLabel,
+    MatFormFieldModule,
+    MatHint,
+    MatLabel
 } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatRadioChange, MatRadioModule } from '@angular/material/radio';
+import {
+    MatSnackBar,
+    MatSnackBarHorizontalPosition,
+    MatSnackBarModule,
+    MatSnackBarVerticalPosition
+} from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatTabsModule } from '@angular/material/tabs';
 import {
-  ActivatedRoute,
-  ActivatedRouteSnapshot,
-  Router,
+    ActivatedRoute,
+    ActivatedRouteSnapshot,
+    Router
 } from '@angular/router';
 import { NgxChartsModule } from '@swimlane/ngx-charts';
 
@@ -36,20 +42,14 @@ import { LoaderService } from '../../services/loader.service';
 import { ReportsService } from '../../services/reports.service';
 import { A3500_NAME, INFLATION_NAME } from '../constants';
 import { EDateType } from '../enums';
-import { IReport, IVouchers } from './interfaces';
+import { IAssets, IReport } from './interfaces';
 import {
-  IReferences,
-  IReportV2,
-  IValuation,
-  IVouchersReturn,
+    IAssetsReturn,
+    IReferences,
+    IReportV2,
+    IValuation
 } from './interfacesv2';
 import { reportsMock } from './reports-mock';
-import {
-  MatSnackBar,
-  MatSnackBarHorizontalPosition,
-  MatSnackBarModule,
-  MatSnackBarVerticalPosition,
-} from '@angular/material/snack-bar';
 
 export interface PeriodicElement {
   name: string;
@@ -84,15 +84,27 @@ export interface PeriodicElement {
 export class ReportsComponent implements OnInit {
   horizontalPosition: MatSnackBarHorizontalPosition = 'center';
   verticalPosition: MatSnackBarVerticalPosition = 'top';
+
+  // Holdings data sources
   displayedColumns: string[] = [];
   dataSource: any[] = [];
+  categoryDisplayedColumns: string[] = [];
+  categoryDataSource: any[] = [];
+
+  // Returns data sources
+  returnsColumns: string[] = [];
+  returnsDataSource: any[] = [];
+  categoryReturnsColumns: string[] = [];
+  categoryReturnsDataSource: any[] = [];
+
+  // References data
+  referencesColumns: string[] = ['date', 'value_dolar', 'value_inflation'];
+  referencesDataSource: any[] = [];
+
+  // Legacy data sources (keeping for compatibility)
   dates: any[] = [];
   differenceColumns: string[] = [];
   differenceDataSource: any[] = [];
-  returnsColumns: string[] = [];
-  returnsDataSource: any[] = [];
-  referencesColumns: string[] = ['date', 'value_dolar', 'value_inflation'];
-  referencesDataSource: any[] = [];
   percentageWeeklyColumns: string[] = [];
   percentageWeeklyDataSource: any[] = [];
   percentageAcumColumns: string[] = [];
@@ -149,55 +161,93 @@ export class ReportsComponent implements OnInit {
     this.showRangeDatepicker = radioData.value === EDateType.RANGE;
   }
 
-  calculateData(reportData: IReportV2) {
-    const report: IReportV2 = reportData;
-    const vouchers: IVouchers = report.VouchersByCategory;
+  calculateData(reportData: any) {
+    // Transform AssetsByCategory if needed
+    const transformedData = this.transformAssetsData(reportData);
+    const report: IReportV2 = transformedData;
+    const assets: IAssets = report.AssetsByCategory;
+
+    // Get total holdings data
+    const totalHoldings = reportData.TotalHoldingsByDate;
+
+    // Check if assets data is available
+    if (!assets || Object.keys(assets).length === 0) {
+      this.displayedColumns = ['date', 'message'];
+      this.dataSource = [
+        {
+          date: 'No disponible',
+          message:
+            'Los datos de tenencia no están disponibles en este momento.',
+        },
+      ];
+      return;
+    }
+
     const dates = new Set<string>();
     const columns = new Set<string>();
     const rowsMap: { [key: string]: { [key: string]: number | string } } = {};
     const idValuesMap: { [key: string]: number } = {};
 
-    for (const id in vouchers) {
-      if (vouchers.hasOwnProperty(id)) {
-        const holdings = vouchers[id][0].Holdings;
-        let hasValidDate = false;
-        for (const holding of holdings) {
-          const date = holding.Date
-            ? new Date(holding.DateRequested).toISOString().split('T')[0]
-            : '-';
-          if (holding.Date) {
-            hasValidDate = true;
-            dates.add(date);
-          }
-          if (!rowsMap[date]) {
-            rowsMap[date] = {};
-          }
-          rowsMap[date][id] =
-            holding.Value !== null && holding.Value !== undefined
-              ? holding.Value
+    // Process each category and extract individual asset IDs
+    for (const category in assets) {
+      if (assets.hasOwnProperty(category)) {
+        const categoryAssets = assets[category];
+        // Process each asset in the category
+        for (const asset of categoryAssets) {
+          const assetId = asset.ID;
+          const holdings = asset.Holdings || [];
+          let hasValidDate = false;
+
+          for (const holding of holdings) {
+            const date = holding.Date
+              ? new Date(holding.DateRequested).toISOString().split('T')[0]
               : '-';
-        }
-        if (!hasValidDate) {
-          idValuesMap[id] = idValuesMap[id] || 0;
-        } else {
-          columns.add(id);
+            if (holding.Date) {
+              hasValidDate = true;
+              dates.add(date);
+            }
+            if (!rowsMap[date]) {
+              rowsMap[date] = {};
+            }
+            rowsMap[date][assetId] =
+              holding.Value !== null && holding.Value !== undefined
+                ? holding.Value
+                : '-';
+          }
+          if (!hasValidDate) {
+            idValuesMap[assetId] = idValuesMap[assetId] || 0;
+          } else {
+            columns.add(assetId);
+          }
         }
       }
     }
 
     this.displayedColumns = ['date', ...Array.from(columns), 'total'];
     const sortedDates = Array.from(dates).sort();
+
+    // Create a map for total holdings by date
+    const totalHoldingsMap: { [key: string]: number } = {};
+    if (totalHoldings) {
+      for (const totalHolding of totalHoldings) {
+        const date = totalHolding.Date
+          ? new Date(totalHolding.DateRequested).toISOString().split('T')[0]
+          : '-';
+        if (totalHolding.Date) {
+          totalHoldingsMap[date] = totalHolding.Value;
+        }
+      }
+    }
+
     this.dataSource = sortedDates.map((date) => {
       const row: any = { date };
-      let total = 0;
       for (const id of columns) {
         const value = rowsMap[date][id];
         row[id] = value !== undefined ? value : '-';
-        if (typeof value === 'number') {
-          total += value;
-        }
       }
-      row['total'] = total > 0 ? total : '-';
+      // Use TotalHoldingsByDate value for the total column
+      row['total'] =
+        totalHoldingsMap[date] !== undefined ? totalHoldingsMap[date] : '-';
       return row;
     });
 
@@ -220,58 +270,172 @@ export class ReportsComponent implements OnInit {
       }
     }
     this.calculateReturn(reportData);
+    this.calculateCategoryData(reportData);
+    this.calculateCategoryReturns(reportData);
   }
 
-  calculateReturn(reportData: IReportV2) {
-    const report: IReportV2 = reportData;
-    const vouchers: IVouchersReturn = report.VouchersReturnByCategory;
+  private transformAssetsData(data: any): IReportV2 {
+    console.log('Original data structure:', Object.keys(data));
+
+    // If the data already has the expected structure, return it as is
+    if (data.AssetsByCategory) {
+      console.log('Data already has AssetsByCategory structure');
+      // Ensure we preserve the total data
+      return {
+        AssetsByCategory: data.AssetsByCategory,
+        AssetsReturnByCategory: data.AssetsReturnByCategory || {},
+        ReferenceVariables: data.ReferenceVariables || {},
+        TotalHoldingsByDate: data.TotalHoldingsByDate,
+        TotalReturns: data.TotalReturns,
+      };
+    }
+
+    // Process AssetsByCategory
+    const transformed: IReportV2 = {
+      AssetsByCategory: {},
+      AssetsReturnByCategory: {},
+      ReferenceVariables: data.ReferenceVariables || {},
+      TotalHoldingsByDate: data.TotalHoldingsByDate,
+      TotalReturns: data.TotalReturns,
+    };
+
+    if (data.AssetsByCategory) {
+      console.log('Processing AssetsByCategory');
+      // Process each category
+      for (const category in data.AssetsByCategory) {
+        if (data.AssetsByCategory.hasOwnProperty(category)) {
+          const assets = data.AssetsByCategory[category];
+          transformed.AssetsByCategory[category] = assets.map((asset: any) => ({
+            ID: asset.ID,
+            Type: asset.Type,
+            Denomination: asset.Denomination,
+            Category: asset.Category,
+            Holdings: asset.Holdings || [],
+            Transactions: asset.Transactions || [],
+          }));
+        }
+      }
+      console.log(
+        'Processed categories:',
+        Object.keys(transformed.AssetsByCategory)
+      );
+    }
+
+    // Process AssetsReturnByCategory
+    if (data.AssetsReturnByCategory) {
+      console.log('Processing AssetsReturnByCategory');
+      console.log(
+        'AssetsReturnByCategory keys:',
+        Object.keys(data.AssetsReturnByCategory)
+      );
+      console.log(
+        'AssetsReturnByCategory sample:',
+        data.AssetsReturnByCategory
+      );
+      transformed.AssetsReturnByCategory = data.AssetsReturnByCategory;
+      console.log(
+        'Processed AssetsReturnByCategory:',
+        transformed.AssetsReturnByCategory
+      );
+    }
+
+    return transformed;
+  }
+
+  calculateReturn(reportData: any) {
+    // Try to get returns data from different possible sources
+    let assets: any = null;
+    let totalReturns: any = null;
+
+    if (reportData.AssetsReturnByCategory) {
+      assets = reportData.AssetsReturnByCategory;
+    }
+
+    // Get total returns data
+    if (reportData.TotalReturns) {
+      totalReturns = reportData.TotalReturns;
+    }
+
+    // If no return data is available, create empty arrays
+    if (!assets || Object.keys(assets).length === 0) {
+      console.log('No return data available, showing message');
+      this.returnsColumns = ['date', 'message'];
+      this.returnsDataSource = [
+        {
+          date: 'No disponible',
+          message:
+            'Los datos de rendimiento no están disponibles en este momento.',
+        },
+      ];
+      return;
+    }
+
     const dates = new Set<string>();
     const columns = new Set<string>();
     const rowsMap: { [key: string]: { [key: string]: number | string } } = {};
     const idValuesMap: { [key: string]: number } = {};
 
-    for (const id in vouchers) {
-      if (vouchers.hasOwnProperty(id)) {
-        const returns = vouchers[id][0].ReturnsByDateRange;
-        let hasValidDate = false;
-        for (const returnData of returns || []) {
-          const date = returnData.StartDate
-            ? new Date(returnData.StartDate).toISOString().split('T')[0]
-            : '-';
-          if (returnData.StartDate) {
-            hasValidDate = true;
-            dates.add(date);
-          }
-          if (!rowsMap[date]) {
-            rowsMap[date] = {};
-          }
-          rowsMap[date][id] =
-            returnData.ReturnPercentage !== null &&
-            returnData.ReturnPercentage !== undefined
-              ? returnData.ReturnPercentage
+    // Process each category and extract individual asset IDs
+    for (const category in assets) {
+      if (assets.hasOwnProperty(category)) {
+        const categoryAssets = assets[category];
+        // Process each asset in the category
+        for (const asset of categoryAssets) {
+          const assetId = asset.ID;
+          const returns = asset.ReturnsByDateRange || [];
+          let hasValidDate = false;
+
+          for (const returnData of returns) {
+            const date = returnData.StartDate
+              ? new Date(returnData.StartDate).toISOString().split('T')[0]
               : '-';
-        }
-        if (!hasValidDate) {
-          idValuesMap[id] = idValuesMap[id] || 0;
-        } else {
-          columns.add(id);
+            if (returnData.StartDate) {
+              hasValidDate = true;
+              dates.add(date);
+            }
+            if (!rowsMap[date]) {
+              rowsMap[date] = {};
+            }
+            rowsMap[date][assetId] =
+              returnData.ReturnPercentage !== null &&
+              returnData.ReturnPercentage !== undefined
+                ? returnData.ReturnPercentage
+                : '-';
+          }
+          if (!hasValidDate) {
+            idValuesMap[assetId] = idValuesMap[assetId] || 0;
+          } else {
+            columns.add(assetId);
+          }
         }
       }
     }
 
     this.returnsColumns = ['date', ...Array.from(columns), 'total'];
     const sortedDates = Array.from(dates).sort();
+
+    // Create a map for total returns by date
+    const totalReturnsMap: { [key: string]: number } = {};
+    if (totalReturns) {
+      for (const totalReturn of totalReturns) {
+        const date = totalReturn.StartDate
+          ? new Date(totalReturn.StartDate).toISOString().split('T')[0]
+          : '-';
+        if (totalReturn.StartDate) {
+          totalReturnsMap[date] = totalReturn.ReturnPercentage;
+        }
+      }
+    }
+
     this.returnsDataSource = sortedDates.map((date) => {
       const row: any = { date };
-      let total = 0;
       for (const id of columns) {
         const value = rowsMap[date][id];
         row[id] = value !== undefined ? value : '-';
-        if (typeof value === 'number') {
-          total += value;
-        }
       }
-      row['total'] = total > 0 ? total : '-';
+      // Use TotalReturns value for the total column
+      row['total'] =
+        totalReturnsMap[date] !== undefined ? totalReturnsMap[date] : '-';
       return row;
     });
 
@@ -293,6 +457,162 @@ export class ReportsComponent implements OnInit {
         }
       }
     }
+  }
+
+  calculateCategoryData(reportData: any) {
+    const categoryAssets = reportData.CategoryAssets;
+    const totalHoldings = reportData.TotalHoldingsByDate;
+
+    // Check if category assets data is available
+    if (!categoryAssets || Object.keys(categoryAssets).length === 0) {
+      this.categoryDisplayedColumns = ['date', 'message'];
+      this.categoryDataSource = [
+        {
+          date: 'No disponible',
+          message:
+            'Los datos de tenencia por categoría no están disponibles en este momento.',
+        },
+      ];
+      return;
+    }
+
+    const dates = new Set<string>();
+    const columns = new Set<string>();
+    const rowsMap: { [key: string]: { [key: string]: number | string } } = {};
+
+    for (const category in categoryAssets) {
+      if (categoryAssets.hasOwnProperty(category)) {
+        const holdings = categoryAssets[category].Holdings || [];
+        let hasValidDate = false;
+        for (const holding of holdings) {
+          const date = holding.Date
+            ? new Date(holding.DateRequested).toISOString().split('T')[0]
+            : '-';
+          if (holding.Date) {
+            hasValidDate = true;
+            dates.add(date);
+          }
+          if (!rowsMap[date]) {
+            rowsMap[date] = {};
+          }
+          rowsMap[date][category] =
+            holding.Value !== null && holding.Value !== undefined
+              ? holding.Value
+              : '-';
+        }
+        if (hasValidDate) {
+          columns.add(category);
+        }
+      }
+    }
+
+    this.categoryDisplayedColumns = ['date', ...Array.from(columns), 'total'];
+    const sortedDates = Array.from(dates).sort();
+
+    // Create a map for total holdings by date
+    const totalHoldingsMap: { [key: string]: number } = {};
+    if (totalHoldings) {
+      for (const totalHolding of totalHoldings) {
+        const date = totalHolding.Date
+          ? new Date(totalHolding.DateRequested).toISOString().split('T')[0]
+          : '-';
+        if (totalHolding.Date) {
+          totalHoldingsMap[date] = totalHolding.Value;
+        }
+      }
+    }
+
+    this.categoryDataSource = sortedDates.map((date) => {
+      const row: any = { date };
+      for (const category of columns) {
+        const value = rowsMap[date][category];
+        row[category] = value !== undefined ? value : '-';
+      }
+      // Use TotalHoldingsByDate value for the total column
+      row['total'] =
+        totalHoldingsMap[date] !== undefined ? totalHoldingsMap[date] : '-';
+      return row;
+    });
+  }
+
+  calculateCategoryReturns(reportData: any) {
+    const categoryAssetsReturn = reportData.CategoryAssetsReturn;
+    const totalReturns = reportData.TotalReturns;
+
+    // Check if category returns data is available
+    if (
+      !categoryAssetsReturn ||
+      Object.keys(categoryAssetsReturn).length === 0
+    ) {
+      this.categoryReturnsColumns = ['date', 'message'];
+      this.categoryReturnsDataSource = [
+        {
+          date: 'No disponible',
+          message:
+            'Los datos de rendimiento por categoría no están disponibles en este momento.',
+        },
+      ];
+      return;
+    }
+
+    const dates = new Set<string>();
+    const columns = new Set<string>();
+    const rowsMap: { [key: string]: { [key: string]: number | string } } = {};
+
+    for (const category in categoryAssetsReturn) {
+      if (categoryAssetsReturn.hasOwnProperty(category)) {
+        const returns = categoryAssetsReturn[category].ReturnsByDateRange || [];
+        let hasValidDate = false;
+        for (const returnData of returns) {
+          const date = returnData.StartDate
+            ? new Date(returnData.StartDate).toISOString().split('T')[0]
+            : '-';
+          if (returnData.StartDate) {
+            hasValidDate = true;
+            dates.add(date);
+          }
+          if (!rowsMap[date]) {
+            rowsMap[date] = {};
+          }
+          rowsMap[date][category] =
+            returnData.ReturnPercentage !== null &&
+            returnData.ReturnPercentage !== undefined
+              ? returnData.ReturnPercentage
+              : '-';
+        }
+        if (hasValidDate) {
+          columns.add(category);
+        }
+      }
+    }
+
+    this.categoryReturnsColumns = ['date', ...Array.from(columns), 'total'];
+    const sortedDates = Array.from(dates).sort();
+
+    // Create a map for total returns by date
+    const totalReturnsMap: { [key: string]: number } = {};
+    if (totalReturns) {
+      for (const totalReturn of totalReturns) {
+        const date = totalReturn.StartDate
+          ? new Date(totalReturn.StartDate).toISOString().split('T')[0]
+          : '-';
+        if (totalReturn.StartDate) {
+          totalReturnsMap[date] = totalReturn.ReturnPercentage;
+        }
+      }
+    }
+
+    this.categoryReturnsDataSource = sortedDates.map((date) => {
+      const row: any = { date };
+      for (const category of columns) {
+        const value = rowsMap[date][category];
+        row[category] = value !== undefined ? value : '-';
+      }
+      // Use TotalReturns value for the total column
+      row['total'] =
+        totalReturnsMap[date] !== undefined ? totalReturnsMap[date] : '-';
+      return row;
+    });
   }
 
   calculateDifferences() {
@@ -531,21 +851,33 @@ export class ReportsComponent implements OnInit {
         const dolarValues = this.dolarData?.Valuations;
         this.referencesDataSource = [];
 
-        // Recorremos todos los datos de inflación
-        inflationValues?.forEach((inflation) => {
-          // Buscamos la misma fecha en los datos del dólar
-          const dolarValue = dolarValues?.find(
-            (dolar) => dolar.Date === inflation.Date
-          );
+        // If reference variables are available, process them
+        if (inflationValues && dolarValues) {
+          // Recorremos todos los datos de inflación
+          inflationValues.forEach((inflation) => {
+            // Buscamos la misma fecha en los datos del dólar
+            const dolarValue = dolarValues.find(
+              (dolar) => dolar.Date === inflation.Date
+            );
 
-          if (dolarValue) {
-            this.referencesDataSource.push({
-              date: inflation.Date,
-              value_dolar: dolarValue.Value,
-              value_inflation: inflation.Value / 100,
-            });
-          }
-        });
+            if (dolarValue) {
+              this.referencesDataSource.push({
+                date: inflation.Date,
+                value_dolar: dolarValue.Value,
+                value_inflation: inflation.Value / 100,
+              });
+            }
+          });
+        } else {
+          // If no reference variables, show a message
+          this.referencesDataSource = [
+            {
+              date: 'No disponible',
+              value_dolar: 'No disponible',
+              value_inflation: 'No disponible',
+            },
+          ];
+        }
 
         this.calculateData(reports);
         this.loaderService.hideLoader();

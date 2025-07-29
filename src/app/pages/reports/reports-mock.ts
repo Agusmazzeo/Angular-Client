@@ -1,7 +1,7 @@
 import { IReport } from './interfaces';
 
 export const reportsMock: IReport = {
-  VouchersByCategory: {
+  AssetsByCategory: {
     ARS: [
       {
         ID: '$',
